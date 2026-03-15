@@ -16,6 +16,10 @@ function applyNonce(html, nonce) {
 
 const NONCE = crypto.randomBytes(16).toString('base64');
 
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 test('adds nonce to bare inline <script> tag', () => {
   const input = '<script>console.log("hi")</script>';
   const result = applyNonce(input, NONCE);
@@ -35,7 +39,7 @@ test('adds nonce to ALL script tags, not just the first', () => {
     '<script>var x = 1;</script>'
   ].join('\n');
   const result = applyNonce(input, NONCE);
-  const escaped = NONCE.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&');
+  const escaped = escapeRegex(NONCE);
   const matches = result.match(new RegExp(`nonce="${escaped}"`, 'g'));
   assert.strictEqual(matches.length, 3, 'Expected 3 nonce attributes');
 });
@@ -69,7 +73,7 @@ test('handles dashboard.html-like structure correctly', () => {
   const result = applyNonce(html, NONCE);
 
   // All three script tags should have nonces
-  const noncePattern = new RegExp(`<script nonce="${NONCE.replace(/[+/=]/g, '\\$&')}"`, 'g');
+  const noncePattern = new RegExp(`<script nonce="${escapeRegex(NONCE)}"`, 'g');
   const matches = result.match(noncePattern);
   assert.strictEqual(matches.length, 3, 'All 3 script tags should have nonces');
 
