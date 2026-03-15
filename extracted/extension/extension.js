@@ -142,7 +142,7 @@ function getDashboardHtml(context, webview) {
   }
 
   const nonce = crypto.randomBytes(16).toString('base64');
-  html = html.replace('<script>', `<script nonce="${nonce}">`);
+  html = html.replace(/<script(?=[\s>])/gi, `<script nonce="${nonce}"`);
   html = html.replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/gi, '');
 
   const chartUri = webview.asWebviewUri(vscode.Uri.file(path.join(context.extensionPath, 'vendor', 'lightweight-charts.standalone.production.js')));
@@ -176,7 +176,11 @@ function openPanel(context) {
     'antigtrade',
     'AntiGTrade',
     vscode.ViewColumn.Two,
-    { enableScripts: true, retainContextWhenHidden: true }
+    {
+      enableScripts: true,
+      retainContextWhenHidden: true,
+      localResourceRoots: [vscode.Uri.file(context.extensionPath)]
+    }
   );
 
   panel.webview.html = getDashboardHtml(context, panel.webview);

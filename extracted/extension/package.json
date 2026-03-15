@@ -14,7 +14,7 @@
   "main": "./extension.js",
   "icon": "icon.png",
   "scripts": {
-    "test": "node test/validateMessage.test.js && node test/okxService.test.js"
+    "test": "node test/validateMessage.test.js && node test/okxService.test.js && node test/dashboardNonce.test.js"
   },
   "contributes": {
     "commands": [{
