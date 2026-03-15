@@ -130,12 +130,14 @@ function execFileAsync(cmd, argv, opts) {
 function getDashboardHtml(context, webview) {
   const dashPath = path.join(context.extensionPath, 'dashboard.html');
 
+  const escHtml = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
   let html;
   try {
     html = fs.readFileSync(dashPath, 'utf8');
   } catch (e) {
     return `<!DOCTYPE html><html><body style="background:#000;color:#00d26a;font-family:monospace;padding:32px;">
-      <h2>AntiGTrade</h2><p style="color:#888;margin-top:8px;">Could not load dashboard: ${e.message}</p>
+      <h2>AntiGTrade</h2><p style="color:#888;margin-top:8px;">Could not load dashboard: ${escHtml(e.message)}</p>
     </body></html>`;
   }
 
@@ -144,6 +146,7 @@ function getDashboardHtml(context, webview) {
   html = html.replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/gi, '');
 
   const chartUri = webview.asWebviewUri(vscode.Uri.file(path.join(context.extensionPath, 'vendor', 'lightweight-charts.standalone.production.js')));
+  const renderersUri = webview.asWebviewUri(vscode.Uri.file(path.join(context.extensionPath, 'renderers.js')));
 
   const csp = [
     `default-src 'none'`,
@@ -157,6 +160,7 @@ function getDashboardHtml(context, webview) {
 
   html = html.replace('<head>', `<head>\n<meta http-equiv="Content-Security-Policy" content="${csp}">`);
   html = html.replace('vscode-resource:lightweight-charts.standalone.production.js', chartUri.toString());
+  html = html.replace('"renderers.js"', `"${renderersUri.toString()}"`);
   return html;
 }
 
