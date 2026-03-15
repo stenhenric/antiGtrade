@@ -59,6 +59,12 @@ test('place_order: accepts stop order type', () => {
 test('place_order: accepts trailing stop order type', () => {
   assert.strictEqual(validateMessage({ command: 'place_order', instId: 'BTC-USDT', side: 'buy', type: 'trailing stop', sz: 1, px: 100 }).valid, true);
 });
+test('place_order: accepts uppercase order type', () => {
+  assert.strictEqual(validateMessage({ command: 'place_order', instId: 'BTC-USDT', side: 'buy', type: 'LIMIT', sz: 1, px: 100 }).valid, true);
+});
+test('place_order: accepts mixed-case order type', () => {
+  assert.strictEqual(validateMessage({ command: 'place_order', instId: 'BTC-USDT', side: 'buy', type: 'Market', sz: 1 }).valid, true);
+});
 
 // -- set_leverage
 test('set_leverage: rejects missing instId', () => {

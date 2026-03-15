@@ -74,12 +74,16 @@ test('writeConfig + loadConfig round-trips live credentials', () => {
   assert.strictEqual(cfg.isDemo, false);
 });
 
-test('config file has restricted permissions', () => {
-  writeConfig({ apiKey: 'ak3', secret: 'sk3', passphrase: 'pp3', isDemo: true });
-  const stat = fs.statSync(configPath);
-  const mode = (stat.mode & 0o777).toString(8);
-  assert.strictEqual(mode, '600');
-});
+if (process.platform !== 'win32') {
+  test('config file has restricted permissions', () => {
+    writeConfig({ apiKey: 'ak3', secret: 'sk3', passphrase: 'pp3', isDemo: true });
+    const stat = fs.statSync(configPath);
+    const mode = (stat.mode & 0o777).toString(8);
+    assert.strictEqual(mode, '600');
+  });
+} else {
+  test('config file permissions (skipped on Windows)', () => { /* no-op */ });
+}
 
 test('hasKeys equivalent returns true when all keys present', () => {
   writeConfig({ apiKey: 'a', secret: 's', passphrase: 'p', isDemo: true });
