@@ -1,3 +1,5 @@
+const _esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
 function renderBotsTable(list) {
   const tbody = document.querySelector('#bots-table tbody');
   if (!tbody) return;
@@ -7,12 +9,12 @@ function renderBotsTable(list) {
   }
   tbody.innerHTML = list.slice(0,100).map(b => `
     <tr>
-      <td>${b.id}</td>
-      <td>${b.type || 'grid'}</td>
-      <td>${b.sym}</td>
-      <td>${b.sz || '--'}</td>
-      <td><span class="pill ${b.st==='running'?'green':'gray'}">${b.st}</span></td>
-      <td>${b.pnl || ''}</td>
+      <td>${_esc(b.id)}</td>
+      <td>${_esc(b.type || 'grid')}</td>
+      <td>${_esc(b.sym)}</td>
+      <td>${_esc(b.sz || '--')}</td>
+      <td><span class="pill ${b.st==='running'?'green':'gray'}">${_esc(b.st)}</span></td>
+      <td>${_esc(b.pnl || '')}</td>
     </tr>
   `).join('');
 }
@@ -26,13 +28,13 @@ function renderHistoryTable(list) {
   }
   tbody.innerHTML = list.slice(0,100).map(o => `
     <tr>
-      <td>${new Date(Number(o.time || Date.now())).toLocaleString()}</td>
-      <td>${o.sym}</td>
-      <td><span class="pill ${o.side==='buy'?'green':'red'}">${o.side}</span></td>
-      <td>${o.type || 'limit'}</td>
-      <td>${o.qty}</td>
-      <td>${o.px || '--'}</td>
-      <td>${o.st}</td>
+      <td>${_esc(new Date(Number(o.time || Date.now())).toLocaleString())}</td>
+      <td>${_esc(o.sym)}</td>
+      <td><span class="pill ${o.side==='buy'?'green':'red'}">${_esc(o.side)}</span></td>
+      <td>${_esc(o.type || 'limit')}</td>
+      <td>${_esc(o.qty)}</td>
+      <td>${_esc(o.px || '--')}</td>
+      <td>${_esc(o.st)}</td>
     </tr>
   `).join('');
 }
