@@ -31,14 +31,14 @@
 
 html,body { background:var(--bg); color:var(--text-1); font-family:var(--font-ui); font-size:12px; height:100%; overflow:hidden; }
 .view { display:none; height:100%; }
-.view.on { display:block; }
+.view.on { display:flex; flex-direction:column; }
 
 ::-webkit-scrollbar { width:3px; height:3px; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:var(--border-2); border-radius:2px; }
 
 /* ── App shell ── */
-.app { display:grid; grid-template-rows:40px 26px 1fr; height:100vh; }
+.app { display:grid; grid-template-rows:40px 1fr; height:100vh; }
 
 /* ── Header ── */
 .hdr {
@@ -89,7 +89,7 @@ html,body { background:var(--bg); color:var(--text-1); font-family:var(--font-ui
 .pill.gray { color:var(--text-2); background:var(--bg-3); }
 
 /* ── Ticker ── */
-.ticker { background:var(--bg-1); border-bottom:1px solid var(--border); overflow:hidden; position:relative; }
+.ticker { background:var(--bg-1); border-bottom:1px solid var(--border); overflow:hidden; position:relative; flex-shrink:0; height:26px; }
 .ticker::before,.ticker::after {
   content:''; position:absolute; top:0; bottom:0; width:32px; z-index:2; pointer-events:none;
 }
@@ -106,7 +106,7 @@ html,body { background:var(--bg); color:var(--text-1); font-family:var(--font-ui
 .dn  { color:var(--red); }
 
 /* ── Main 3-col ── */
-.main { display:grid; grid-template-columns:210px 1fr 272px; overflow:hidden; }
+.main { display:grid; grid-template-columns:210px 1fr 272px; overflow:hidden; flex:1; min-height:0; }
 .col  { display:flex; flex-direction:column; border-right:1px solid var(--border); overflow:hidden; }
 .col:last-child { border-right:none; }
 
@@ -350,7 +350,7 @@ html,body { background:var(--bg); color:var(--text-1); font-family:var(--font-ui
     </div>
   </header>
 
-  <!-- TICKER -->
+  <!-- TRADE VIEW -->
   <div id="view-trade" class="view on">
     <div class="ticker"><div class="ticker-track" id="ttrack"></div></div>
     <div class="main">
