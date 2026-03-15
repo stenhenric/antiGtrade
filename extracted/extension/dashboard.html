@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AntiGTrade</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #000000;
+  --bg-1:      #0a0a0a;
+  --bg-2:      #111111;
+  --bg-3:      #1a1a1a;
+  --bg-4:      #222222;
+  --border:    #1f1f1f;
+  --border-2:  #2a2a2a;
+  --text-1:    #ffffff;
+  --text-2:    #8c8c8c;
+  --text-3:    #4a4a4a;
+  --green:     #00d26a;
+  --green-bg:  rgba(0,210,106,0.1);
+  --red:       #f44336;
+  --red-bg:    rgba(244,67,54,0.1);
+  --yellow:    #f0b90b;
+  --blue:      #3872e0;
+  --font-mono: 'SF Mono','Fira Code','Cascadia Code','Consolas',monospace;
+  --font-ui:   -apple-system,'Helvetica Neue',Arial,sans-serif;
+  --r:         3px;
+}
+
+html,body { background:var(--bg); color:var(--text-1); font-family:var(--font-ui); font-size:12px; height:100%; overflow:hidden; }
+.view { display:none; height:100%; }
+.view.on { display:block; }
+
+::-webkit-scrollbar { width:3px; height:3px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border-2); border-radius:2px; }
+
+/* ── App shell ── */
+.app { display:grid; grid-template-rows:40px 26px 1fr; height:100vh; }
+
+/* ── Header ── */
+.hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 14px; background:var(--bg-1); border-bottom:1px solid var(--border);
+}
+
+.logo { display:flex; align-items:center; gap:7px; flex-shrink:0; }
+.logo-hex {
+  width:18px; height:18px; background:var(--green);
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+}
+.logo-name { font-weight:700; font-size:13px; letter-spacing:.3px; }
+.logo-name .G { font-size:18px; color:var(--green); line-height:1; vertical-align:middle; }
+
+.hdr-nav { display:flex; gap:1px; }
+.n-btn {
+  background:none; border:none; color:var(--text-2);
+  font-family:var(--font-ui); font-size:12px; font-weight:500;
+  padding:4px 12px; cursor:pointer; border-radius:var(--r); transition:color .15s,background .15s;
+}
+.n-btn:hover  { color:var(--text-1); background:var(--bg-3); }
+.n-btn.on     { color:var(--text-1); font-weight:600; position:relative; }
+.n-btn.on::after {
+  content:''; display:block; height:2px; background:var(--green);
+  border-radius:1px; position:absolute; bottom:-1px; left:12px; right:12px;
+}
+
+.hdr-r { display:flex; align-items:center; gap:14px; flex-shrink:0; }
+.ws-pill { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-2); }
+.ws-dot  { width:6px; height:6px; border-radius:50%; background:var(--text-3); transition:background .3s; }
+.ws-dot.live        { background:var(--green); box-shadow:0 0 5px var(--green); animation:blink 2s infinite; }
+.ws-dot.connecting  { background:var(--yellow); animation:blink .8s infinite; }
+.ws-dot.error       { background:var(--red); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+.clk { font-family:var(--font-mono); font-size:10px; color:var(--text-3); letter-spacing:.5px; }
+.mode-pill { padding:3px 8px; border:1px solid var(--border-2); border-radius:var(--r); font-size:10px; color:var(--text-2); text-transform:uppercase; letter-spacing:.6px; }
+.mode-pill.live { border-color:var(--red); color:var(--red); background:var(--red-bg); }
+.mode-pill.demo { border-color:var(--green); color:var(--green); background:var(--green-bg); }
+.panel { padding:14px; }
+.panel h3 { font-size:13px; margin-bottom:8px; color:var(--text-2); letter-spacing:.5px; }
+.table { width:100%; border-collapse:collapse; font-size:12px; }
+.table th, .table td { padding:8px 10px; border-bottom:1px solid var(--border); text-align:left; }
+.table th { color:var(--text-2); font-size:11px; text-transform:uppercase; letter-spacing:.6px; }
+.pill { display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:999px; font-size:10px; }
+.pill.green { color:var(--green); background:var(--green-bg); }
+.pill.red { color:var(--red); background:var(--red-bg); }
+.pill.gray { color:var(--text-2); background:var(--bg-3); }
+
+/* ── Ticker ── */
+.ticker { background:var(--bg-1); border-bottom:1px solid var(--border); overflow:hidden; position:relative; }
+.ticker::before,.ticker::after {
+  content:''; position:absolute; top:0; bottom:0; width:32px; z-index:2; pointer-events:none;
+}
+.ticker::before { left:0;  background:linear-gradient(to right,var(--bg-1),transparent); }
+.ticker::after  { right:0; background:linear-gradient(to left, var(--bg-1),transparent); }
+.ticker-track   { display:flex; align-items:center; height:100%; width:max-content; animation:scroll 60s linear infinite; }
+@keyframes scroll { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+.t-item { display:flex; align-items:center; gap:6px; padding:0 14px; border-right:1px solid var(--border); height:100%; white-space:nowrap; cursor:pointer; }
+.t-item:hover { background:var(--bg-2); }
+.t-sym { color:var(--text-2); font-size:11px; font-weight:600; }
+.t-px  { font-family:var(--font-mono); font-size:11px; }
+.t-ch  { font-family:var(--font-mono); font-size:10px; }
+.up  { color:var(--green); }
+.dn  { color:var(--red); }
+
+/* ── Main 3-col ── */
+.main { display:grid; grid-template-columns:210px 1fr 272px; overflow:hidden; }
+.col  { display:flex; flex-direction:column; border-right:1px solid var(--border); overflow:hidden; }
+.col:last-child { border-right:none; }
+
+/* ── Section headers ── */
+.sec-hd {
+  display:flex; align-items:center; justify-content:space-between;
+  height:34px; padding:0 12px; border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.sec-title { font-size:11px; font-weight:600; color:var(--text-2); text-transform:uppercase; letter-spacing:.7px; }
+.sec-tag   { font-family:var(--font-mono); font-size:10px; color:var(--text-3); }
+
+/* ── Left col ── */
+.mkt-search-wrap { padding:7px 8px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.mkt-search {
+  width:100%; background:var(--bg-3); border:1px solid var(--border-2);
+  border-radius:var(--r); color:var(--text-1); font-family:var(--font-ui); font-size:12px;
+  padding:5px 9px; outline:none; transition:border-color .15s;
+}
+.mkt-search:focus { border-color:var(--green); }
+.mkt-search::placeholder { color:var(--text-3); }
+.mkt-list { overflow-y:auto; flex:1; }
+
+.m-row {
+  display:grid; grid-template-columns:1fr auto; grid-template-rows:auto auto;
+  gap:1px 6px; padding:8px 12px; border-bottom:1px solid var(--border);
+  cursor:pointer; transition:background .1s; position:relative;
+}
+.m-row:hover  { background:var(--bg-2); }
+.m-row.on     { background:var(--bg-3); }
+.m-row.on::before { content:''; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--green); }
+.m-sym  { font-size:12px; font-weight:600; grid-column:1; grid-row:1; }
+.m-name { font-size:10px; color:var(--text-3); grid-column:1; grid-row:2; }
+.m-px   { font-family:var(--font-mono); font-size:12px; text-align:right; grid-column:2; grid-row:1; }
+.m-chg  { font-family:var(--font-mono); font-size:10px; text-align:right; grid-column:2; grid-row:2; }
+
+@keyframes f-up { 0%,100%{} 25%{color:var(--green)} }
+@keyframes f-dn { 0%,100%{} 25%{color:var(--red)} }
+.fu { animation:f-up .7s ease; }
+.fd { animation:f-dn .7s ease; }
+
+/* ── Center col ── */
+.center { display:grid; grid-template-rows:50px 1fr 40px 166px; }
+
+/* Instrument row */
+.inst-row {
+  display:flex; align-items:center; gap:16px;
+  padding:0 14px; border-bottom:1px solid var(--border); background:var(--bg-1); overflow:hidden;
+}
+.i-sym  { font-size:15px; font-weight:700; flex-shrink:0; }
+.i-px   { font-family:var(--font-mono); font-size:20px; font-weight:500; flex-shrink:0; }
+.i-chg  { font-family:var(--font-mono); font-size:11px; flex-shrink:0; }
+.i-stats { display:flex; gap:16px; margin-left:auto; overflow:hidden; }
+.i-stat  { display:flex; flex-direction:column; gap:1px; flex-shrink:0; }
+.i-stat-l { font-size:10px; color:var(--text-3); }
+.i-stat-v { font-family:var(--font-mono); font-size:11px; color:var(--text-2); }
+
+/* Chart */
+.chart-box { position:relative; overflow:hidden; background:var(--bg); }
+.c-svg { width:100%; height:100%; display:block; }
+.c-lbl {
+  position:absolute; right:0; font-family:var(--font-mono); font-size:10px;
+  font-weight:600; padding:1px 5px; pointer-events:none;
+  transform:translateY(-50%); transition:top .25s ease;
+}
+
+/* TF bar */
+.tf-row {
+  display:flex; align-items:center; gap:2px; padding:0 10px;
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:var(--bg-1);
+}
+.tf {
+  background:none; border:none; color:var(--text-3);
+  font-family:var(--font-ui); font-size:11px; padding:4px 7px;
+  cursor:pointer; border-radius:var(--r); transition:all .1s;
+}
+.tf:hover { color:var(--text-1); background:var(--bg-3); }
+.tf.on    { color:var(--green); background:var(--green-bg); font-weight:600; }
+
+/* Order form */
+.ord-form { display:flex; flex-direction:column; background:var(--bg-1); overflow:hidden; }
+.ord-tabs { display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid var(--border); flex-shrink:0; }
+.o-tab {
+  background:none; border:none; border-bottom:2px solid transparent;
+  font-family:var(--font-ui); font-size:12px; font-weight:600;
+  padding:7px; cursor:pointer; transition:all .15s;
+}
+.o-tab.buy        { color:var(--text-3); }
+.o-tab.sell       { color:var(--text-3); }
+.o-tab.buy.on     { color:var(--green); background:var(--green-bg); border-bottom-color:var(--green); }
+.o-tab.sell.on    { color:var(--red);   background:var(--red-bg);   border-bottom-color:var(--red); }
+
+.ord-fields {
+  display:grid; grid-template-columns:1fr 1fr 1fr 1fr auto;
+  align-items:end; gap:7px; padding:9px 12px; flex:1;
+}
+.f-grp  { display:flex; flex-direction:column; gap:3px; }
+.f-lbl  { font-size:10px; color:var(--text-3); }
+.f-inp, .f-sel {
+  background:var(--bg-3); border:1px solid var(--border-2);
+  border-radius:var(--r); color:var(--text-1); font-family:var(--font-mono);
+  font-size:12px; padding:5px 8px; outline:none; width:100%; transition:border-color .15s;
+}
+.f-inp:focus,.f-sel:focus { border-color:var(--green); }
+.f-inp::placeholder { color:var(--text-3); }
+.f-inp[readonly] { color:var(--text-2); cursor:default; }
+.f-sel { appearance:none; cursor:pointer; padding-right:22px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%234a4a4a'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 7px center;
+}
+.sub-btn {
+  border:none; border-radius:var(--r); font-family:var(--font-ui);
+  font-size:12px; font-weight:700; padding:6px 18px; cursor:pointer;
+  letter-spacing:.2px; transition:opacity .15s,box-shadow .15s; white-space:nowrap; align-self:end;
+}
+.sub-btn:hover { opacity:.88; }
+.sub-btn.buy   { background:var(--green); color:#000; }
+.sub-btn.sell  { background:var(--red);   color:#fff; }
+
+/* ── Right col ── */
+.right-col { display:grid; grid-template-rows:auto 1fr auto 1fr; }
+
+/* Portfolio summary */
+.port-box { padding:12px 14px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.port-lbl { font-size:10px; color:var(--text-3); text-transform:uppercase; letter-spacing:.6px; margin-bottom:3px; }
+.port-tot { font-family:var(--font-mono); font-size:22px; font-weight:500; }
+.port-tot small { font-size:12px; color:var(--text-3); font-weight:400; }
+.port-day {
+  display:inline-flex; align-items:center; font-family:var(--font-mono);
+  font-size:11px; padding:2px 7px; border-radius:var(--r); margin-top:5px;
+}
+.port-day.up { color:var(--green); background:var(--green-bg); }
+.port-day.dn { color:var(--red);   background:var(--red-bg); }
+.alloc { display:flex; height:2px; margin-top:10px; gap:1px; border-radius:1px; overflow:hidden; }
+.alloc-s { height:100%; }
+
+/* Positions */
+.pos-list { overflow-y:auto; }
+.p-row { padding:8px 12px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; }
+.p-row:hover { background:var(--bg-2); }
+.p-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px; }
+.p-sym { font-size:12px; font-weight:600; }
+.p-val { font-family:var(--font-mono); font-size:12px; }
+.p-bot { display:flex; justify-content:space-between; }
+.p-amt { font-size:10px; color:var(--text-3); }
+.p-pnl { font-family:var(--font-mono); font-size:10px; }
+.p-bar { height:2px; background:var(--border); margin-top:5px; border-radius:1px; }
+.p-bar-f { height:100%; border-radius:1px; }
+
+/* Orders */
+.ord-list { overflow-y:auto; }
+.or-row {
+  display:grid; grid-template-columns:36px 1fr auto 54px;
+  align-items:center; gap:7px; padding:7px 12px;
+  border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s;
+}
+.or-row:hover { background:var(--bg-2); }
+.or-side {
+  font-size:10px; font-weight:700; padding:2px 4px;
+  border-radius:2px; text-align:center; letter-spacing:.5px;
+}
+.or-side.buy  { color:var(--green); background:var(--green-bg); }
+.or-side.sell { color:var(--red);   background:var(--red-bg); }
+.or-sym  { font-size:11px; font-weight:600; }
+.or-px   { font-family:var(--font-mono); font-size:11px; color:var(--text-2); text-align:right; }
+.or-st   { font-size:10px; color:var(--yellow); text-align:right; }
+
+/* Toast */
+.toast {
+  position:fixed; bottom:14px; left:50%; transform:translateX(-50%) translateY(6px);
+  background:var(--bg-3); border:1px solid var(--border-2); border-left:2px solid var(--green);
+  padding:7px 14px; font-size:12px; border-radius:var(--r);
+  box-shadow:0 4px 20px rgba(0,0,0,.7); z-index:999;
+  opacity:0; transition:opacity .2s,transform .2s; white-space:nowrap; pointer-events:none;
+}
+.toast.show  { opacity:1; transform:translateX(-50%) translateY(0); }
+.toast.warn  { border-left-color:var(--yellow); }
+.toast.error { border-left-color:var(--red); }
+
+/* Settings Modal */
+.modal-overlay {
+  position:fixed; top:0; left:0; right:0; bottom:0;
+  background:rgba(0,0,0,0.8); backdrop-filter:blur(2px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .2s; z-index:100;
+}
+.modal-overlay.show { opacity:1; pointer-events:auto; }
+.modal {
+  background:var(--bg-1); border:1px solid var(--border); border-radius:var(--r);
+  width:320px; box-shadow:0 10px 30px rgba(0,0,0,.8); transform:translateY(10px); transition:transform .2s;
+}
+.modal-overlay.show .modal { transform:translateY(0); }
+.m-hd {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:12px 14px; border-bottom:1px solid var(--border);
+}
+.m-title { font-size:13px; font-weight:700; display:flex; align-items:center; gap:6px; }
+.m-close { background:none; border:none; color:var(--text-2); cursor:pointer; font-size:16px; line-height:1; }
+.m-close:hover { color:var(--text-1); }
+.m-body { padding:14px; display:flex; flex-direction:column; gap:10px; }
+.m-help { font-size:11px; color:var(--text-3); line-height:1.4; margin-bottom:4px; }
+.m-help a { color:var(--green); text-decoration:none; }
+.m-help a:hover { text-decoration:underline; }
+.m-ft {
+  padding:12px 14px; border-top:1px solid var(--border);
+  display:flex; justify-content:flex-end; gap:8px; background:var(--bg-2); border-radius: 0 0 var(--r) var(--r);
+}
+.btn {
+  background:var(--bg-3); border:1px solid var(--border-2); color:var(--text-1);
+  font-family:var(--font-ui); font-size:11px; padding:6px 12px; border-radius:var(--r);
+  cursor:pointer; transition:all .15s;
+}
+.btn:hover { background:var(--bg-4); }
+.btn-primary { background:var(--green); color:#000; border:none; font-weight:600; }
+.btn-primary:hover { opacity:.9; background:var(--green); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="hdr">
+    <div class="logo">
+      <div class="logo-hex"></div>
+      <div class="logo-name">ANTI<span class="G">G</span>TRADE</div>
+    </div>
+    <nav class="hdr-nav">
+      <button class="n-btn on"  data-v="spot">Spot</button>
+      <button class="n-btn"     data-v="futures">Futures</button>
+      <button class="n-btn"     data-v="bots">Bots</button>
+      <button class="n-btn"     data-v="history">History</button>
+    </nav>
+    <div class="hdr-r">
+      <button class="n-btn" id="btn-settings" style="display:flex;align-items:center;gap:4px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        API Settings
+      </button>
+      <div class="mode-pill demo" id="mode-pill">Demo</div>
+      <div class="ws-pill"><div class="ws-dot connecting" id="wsd"></div><span id="wsl">Connecting</span></div>
+      <div class="clk" id="clk">--:--:--</div>
+    </div>
+  </header>
+
+  <!-- TICKER -->
+  <div id="view-trade" class="view on">
+    <div class="ticker"><div class="ticker-track" id="ttrack"></div></div>
+    <div class="main">
+
+    <!-- LEFT -->
+    <div class="col">
+      <div class="sec-hd"><span class="sec-title">Markets</span><span class="sec-tag">SPOT</span></div>
+      <div class="mkt-search-wrap">
+        <input class="mkt-search" id="msearch" type="text" placeholder="Search...">
+      </div>
+      <div class="mkt-list" id="mlist"></div>
+    </div>
+
+    <!-- CENTER -->
+    <div class="col center">
+      <div class="inst-row">
+        <span class="i-sym" id="isym">BTC/USDT</span>
+        <span class="i-px up"   id="ipx">—</span>
+        <span class="i-chg up"  id="ichg">—</span>
+        <div class="i-stats">
+          <div class="i-stat"><span class="i-stat-l">24h High</span><span class="i-stat-v" id="shigh">—</span></div>
+          <div class="i-stat"><span class="i-stat-l">24h Low</span><span class="i-stat-v"  id="slow">—</span></div>
+          <div class="i-stat"><span class="i-stat-l">24h Vol</span><span class="i-stat-v"  id="svol">—</span></div>
+        </div>
+      </div>
+
+      <div class="chart-box" id="cbox" style="width:100%; height:100%;"></div>
+
+      <div class="tf-row">
+        <button class="tf" data-tf="1m">1m</button>
+        <button class="tf" data-tf="5m">5m</button>
+        <button class="tf" data-tf="15m">15m</button>
+        <button class="tf on" data-tf="1H">1H</button>
+        <button class="tf" data-tf="4H">4H</button>
+        <button class="tf" data-tf="1D">1D</button>
+        <button class="tf" data-tf="1W">1W</button>
+      </div>
+
+      <div class="ord-form">
+        <div class="ord-tabs">
+          <button class="o-tab buy on" id="tbuy">Buy</button>
+          <button class="o-tab sell"   id="tsell">Sell</button>
+        </div>
+        <div class="ord-fields">
+          <div class="f-grp">
+            <label class="f-lbl">Type</label>
+            <select class="f-sel" id="otype">
+              <option>Limit</option><option>Market</option>
+              <option>Stop</option><option>Trailing Stop</option>
+            </select>
+          </div>
+          <div class="f-grp">
+            <label class="f-lbl">Price (USDT)</label>
+            <input class="f-inp" id="oprice" type="number" placeholder="0.00">
+          </div>
+          <div class="f-grp">
+            <label class="f-lbl">Amount</label>
+            <input class="f-inp" id="oamt" type="number" placeholder="0.00">
+          </div>
+          <div class="f-grp">
+            <label class="f-lbl">Total (USDT)</label>
+            <input class="f-inp" id="ototl" type="number" placeholder="0.00" readonly>
+          </div>
+          <button class="sub-btn buy" id="sbtn">Buy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="col right-col">
+
+      <div class="port-box">
+        <div class="port-lbl">Total Balance</div>
+        <div class="port-tot">$<span id="ptot">48,291</span><small>.64 USD</small></div>
+        <div class="port-day up" id="pday">▲ +$1,842.30 today</div>
+        <div class="alloc" id="alloc">
+          <div class="alloc-s" style="flex:52;background:var(--green)"></div>
+          <div class="alloc-s" style="flex:18;background:var(--blue)"></div>
+          <div class="alloc-s" style="flex:14;background:var(--yellow)"></div>
+          <div class="alloc-s" style="flex:10;background:var(--red)"></div>
+          <div class="alloc-s" style="flex:6; background:var(--text-3)"></div>
+        </div>
+      </div>
+
+      <div class="col" style="border-right:none;">
+        <div class="sec-hd"><span class="sec-title">Positions</span><span class="sec-tag" id="pcnt">4</span></div>
+        <div class="pos-list" id="plist"></div>
+      </div>
+
+      <div class="col" style="border-right:none;border-top:none;display:flex;flex-direction:column;flex:1;">
+        <div style="flex:1;display:flex;flex-direction:column;border-bottom:1px solid #1f1f1f;">
+          <div class="sec-hd"><span class="sec-title">Open Orders</span><span class="sec-tag" id="ocnt">0</span></div>
+          <div class="ord-list" style="flex:1;overflow-y:auto;" id="olist"></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;">
+          <div class="sec-hd"><span class="sec-title">Active Bots</span><span class="sec-tag" id="bcnt">0</span></div>
+          <div class="ord-list" style="flex:1;overflow-y:auto;" id="blist"></div>
+        </div>
+      </div>
+
+    </div>
+    </div>
+  </div>
+
+  <div id="view-bots" class="view">
+    <div class="panel">
+      <h3>Bots</h3>
+      <table class="table" id="bots-table">
+        <thead><tr><th>ID</th><th>Type</th><th>Instrument</th><th>Sz</th><th>Status</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="view-history" class="view">
+    <div class="panel">
+      <h3>Order History</h3>
+      <table class="table" id="hist-table">
+        <thead><tr><th>Time</th><th>Inst</th><th>Side</th><th>Type</th><th>Sz</th><th>Px</th><th>Status</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="set-modal">
+  <div class="modal">
+    <div class="m-hd">
+      <div class="m-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
+        OKX API Credentials
+      </div>
+      <button class="m-close" id="set-close">&times;</button>
+    </div>
+    <div class="m-body">
+      <div class="m-help">Securely connect your OKX account to an AI Agent MCP Server. Keys are saved to <code>~/.okx/config.toml</code>. <a href="https://www.okx.com/account/my-api" target="_blank">Get Keys &rarr;</a></div>
+      <div class="f-grp" style="flex-direction:row;align-items:center;margin-bottom:4px;">
+        <input type="checkbox" id="set-demo" checked style="accent-color:var(--green);cursor:pointer;">
+        <label for="set-demo" style="font-size:12px;cursor:pointer;">Use Demo Trading (Simulated Funds)</label>
+      </div>
+      <div class="f-grp">
+        <label class="f-lbl">API Key</label>
+        <input class="f-inp" type="password" id="set-key" placeholder="Enter API Key">
+      </div>
+      <div class="f-grp">
+        <label class="f-lbl">Secret Key</label>
+        <input class="f-inp" type="password" id="set-secret" placeholder="Enter Secret Key">
+      </div>
+      <div class="f-grp">
+        <label class="f-lbl">Passphrase</label>
+        <input class="f-inp" type="password" id="set-pass" placeholder="Enter Passphrase">
+      </div>
+    </div>
+    <div class="m-ft">
+      <button class="btn" id="set-cancel">Cancel</button>
+      <button class="btn btn-primary" id="set-save">Save Credentials</button>
+    </div>
+  </div>
+</div>
+
+<script src="vscode-resource:lightweight-charts.standalone.production.js"></script>
+<script src="renderers.js"></script>
+<script>
+'use strict';
+const vscode = acquireVsCodeApi();
+
+// ── Static data ───────────────────────────────────────────────────────────────
+
+const MKT = [
+  {sym:'BTC/USDT', id:'BTC-USDT', name:'Bitcoin',   px:83241.5, ch:2.34,  hi:84100,  lo:82300,  vol:'2.1B'},
+  {sym:'ETH/USDT', id:'ETH-USDT', name:'Ethereum',  px:3182.4,  ch:1.87,  hi:3240,   lo:3120,   vol:'890M'},
+  {sym:'SOL/USDT', id:'SOL-USDT', name:'Solana',    px:142.6,   ch:-0.94, hi:145.8,  lo:140.1,  vol:'310M'},
+  {sym:'BNB/USDT', id:'BNB-USDT', name:'BNB',       px:598.2,   ch:0.42,  hi:605,    lo:592,    vol:'180M'},
+  {sym:'XRP/USDT', id:'XRP-USDT', name:'XRP',       px:2.18,    ch:-1.23, hi:2.24,   lo:2.14,   vol:'420M'},
+  {sym:'ADA/USDT', id:'ADA-USDT', name:'Cardano',   px:0.7841,  ch:3.12,  hi:0.80,   lo:0.755,  vol:'95M'},
+  {sym:'AVAX/USDT',id:'AVAX-USDT',name:'Avalanche', px:34.82,   ch:-2.05, hi:36.1,   lo:34.2,   vol:'78M'},
+  {sym:'DOT/USDT', id:'DOT-USDT', name:'Polkadot',  px:7.29,    ch:1.15,  hi:7.44,   lo:7.18,   vol:'62M'},
+  {sym:'LINK/USDT',id:'LINK-USDT',name:'Chainlink', px:14.56,   ch:0.88,  hi:14.82,  lo:14.30,  vol:'55M'},
+  {sym:'MATIC/USDT',id:'MATIC-USDT',name:'Polygon', px:0.912,   ch:-0.67, hi:0.928,  lo:0.901,  vol:'48M'},
+];
+
+const POS = []; // Will be populated by real data
+const ORD = []; // Will be populated by real data
+const BOTS = []; // Will be populated by real data
+
+// Use lightweight charts
+
+
+let ai = 0;       // active market index
+let tf = '1H';    // active timeframe
+let bs = 'buy';   // buy/sell side
+let ws = null;
+let wsOk = false;
+let backendInterval = null; // store polling interval
+let isDemo = true;
+let mType = 'SPOT';
+let view = 'spot';
+let lastWsMsg = Date.now();
+let wsDeadTimer = null;
+let wsPing = null;
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+
+const fmtPx = p => {
+  if (p >= 10000) return p.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  if (p >= 100)   return p.toFixed(2);
+  if (p >= 1)     return p.toFixed(4);
+  return p.toFixed(5);
+};
+
+const fmtVol = v => {
+  if (v >= 1e9) return (v/1e9).toFixed(1)+'B';
+  if (v >= 1e6) return (v/1e6).toFixed(0)+'M';
+  if (v >= 1e3) return (v/1e3).toFixed(0)+'K';
+  return String(Math.round(v));
+};
+
+function showToast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' '+type : '');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+function setMode(demo) {
+  isDemo = Boolean(demo);
+  const pill = document.getElementById('mode-pill');
+  if (!pill) return;
+  pill.textContent = isDemo ? 'Demo' : 'Live';
+  pill.className = 'mode-pill ' + (isDemo ? 'demo' : 'live');
+}
+
+function setView(v) {
+  view = v;
+  document.querySelectorAll('.n-btn').forEach(x => x.classList.toggle('on', x.dataset.v === v));
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('on'));
+
+  if (v === 'spot' || v === 'futures') {
+    document.getElementById('view-trade').classList.add('on');
+    mType = v === 'spot' ? 'SPOT' : 'SWAP';
+    const tag = document.querySelector('.sec-tag');
+    if (tag) tag.textContent = mType;
+    MKT.forEach(m => {
+      const base = m.sym.replace('/', '-');
+      m.id = mType === 'SWAP' ? `${base}-SWAP` : base;
+    });
+    if (wsOk && ws) ws.close(); // triggers reconnect
+    seedTickers().then(() => {
+      fetchCandles(MKT[ai].id, tf);
+      connectWS();
+    });
+  } else if (v === 'bots') {
+    document.getElementById('view-bots').classList.add('on');
+    renderBotsTable(BOTS);
+  } else if (v === 'history') {
+    document.getElementById('view-history').classList.add('on');
+    renderHistoryTable(ORD);
+  }
+}
+
+// ── VS Code Messaging ─────────────────────────────────────────────────────────
+
+window.addEventListener('message', event => {
+  const msg = event.data;
+  switch (msg.type) {
+    case 'toast':
+      showToast(msg.msg, msg.style);
+      break;
+    case 'auth_status':
+      setMode(msg.isDemo !== false);
+      if (msg.authenticated) {
+        document.getElementById('btn-settings').style.color = 'var(--green)';
+        vscode.postMessage({ command: 'fetch_backend_data' });
+        // Poll every 10s
+        if (backendInterval) clearInterval(backendInterval);
+        backendInterval = setInterval(() => vscode.postMessage({ command: 'fetch_backend_data' }), 10000);
+      } else {
+        document.getElementById('btn-settings').style.color = 'var(--text-2)';
+      }
+      break;
+    case 'backend_data':
+      renderBackendData(msg);
+      break;
+    case 'order_result':
+      if (msg.success) {
+        showToast(`✓ Order placed: ${msg.msg}`, 'success');
+        vscode.postMessage({ command: 'fetch_backend_data' });
+        document.getElementById('oprice').value='';
+        document.getElementById('oamt').value='';
+        document.getElementById('ototl').value='';
+      } else {
+        showToast(`Error: ${msg.msg}`, 'error');
+      }
+      break;
+    case 'bot_result':
+    case 'action_result':
+      if (msg.success) {
+        showToast(`✓ ${msg.msg}`, 'success');
+        vscode.postMessage({ command: 'fetch_backend_data' });
+      } else {
+        showToast(`Error: ${msg.msg}`, 'error');
+      }
+      break;
+  }
+});
+
+function renderBackendData(data) {
+  // Balance
+  if (data.balance && data.balance.details && data.balance.details.length) {
+    const totalEq = parseFloat(data.balance.totalEq || 0);
+    document.getElementById('ptot').textContent = totalEq.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).split('.')[0];
+    document.getElementById('ptot').nextElementSibling.textContent = '.' + (totalEq.toFixed(2).split('.')[1]) + ' USD';
+    document.getElementById('pday').style.display = 'none'; // No daily pnl in this endpoint easily
+    
+    // Allocations chart
+    let allocHtml = '';
+    const details = data.balance.details.filter(d => parseFloat(d.eqUsd) > 0).sort((a,b)=>b.eqUsd-a.eqUsd);
+    const colors = ['var(--green)', 'var(--blue)', 'var(--yellow)', 'var(--red)', 'var(--text-3)'];
+    details.slice(0,5).forEach((d, i) => {
+      const pct = (parseFloat(d.eqUsd) / totalEq) * 100;
+      if (pct > 0.5) {
+        allocHtml += `<div class="alloc-s" style="flex:${pct};background:${colors[i%colors.length]}"></div>`;
+      }
+    });
+    document.getElementById('alloc').innerHTML = allocHtml;
+  } else {
+    document.getElementById('ptot').textContent = '0';
+    document.getElementById('ptot').nextElementSibling.textContent = '.00 USD';
+    document.getElementById('alloc').innerHTML = '';
+  }
+
+  // Positions
+  POS.length = 0;
+  if (data.positions) {
+    data.positions.forEach(p => {
+      const pnl = parseFloat(p.uplRatio) * 100;
+      POS.push({
+        instId: p.instId,
+        mgnMode: p.mgnMode,
+        sym: p.instId.replace('-SWAP',''),
+        amt: p.pos,
+        val: parseFloat(p.upl), // Using PNL as roughly value for now
+        pnl: parseFloat(pnl.toFixed(2)),
+        pct: Math.min(Math.abs(pnl), 100)
+      });
+    });
+  }
+  buildPos();
+
+  // Orders
+  ORD.length = 0;
+  if (data.orders) {
+    data.orders.forEach(o => {
+      ORD.push({
+        side: o.side,
+        sym: o.instId,
+        px: o.px,
+        qty: o.sz,
+        st: o.state === 'live' ? 'Open' : o.state,
+        time: o.cTime || o.uTime || Date.now()
+      });
+    });
+  }
+  buildOrd();
+
+  // Bots
+  BOTS.length = 0;
+  if (data.bots) {
+    data.bots.forEach(b => {
+      BOTS.push({
+        id: b.algoId,
+        type: b.algoOrdType,
+        sym: b.instId,
+        pnl: b.totalPnl || '0',
+        st: b.state || 'running'
+      });
+    });
+  }
+  buildBots();
+  renderBotsTable(BOTS);
+  renderHistoryTable(ORD);
+}
+
+// Settings Modal interactions
+const modal = document.getElementById('set-modal');
+document.getElementById('btn-settings').onclick = () => modal.classList.add('show');
+document.getElementById('set-close').onclick = () => modal.classList.remove('show');
+document.getElementById('set-cancel').onclick = () => modal.classList.remove('show');
+
+document.getElementById('set-save').onclick = () => {
+  const isDemo = document.getElementById('set-demo').checked;
+  const k = document.getElementById('set-key').value.trim();
+  const s = document.getElementById('set-secret').value.trim();
+  const p = document.getElementById('set-pass').value.trim();
+  if(!k || !s || !p) { showToast('Please fill all API fields', 'error'); return; }
+  if (!isDemo && window.isDemo) {
+    const ok = confirm('Switching to LIVE trading. Are you sure?');
+    if (!ok) return;
+  }
+  vscode.postMessage({ command: 'save_keys', isDemo, keys: { apiKey: k, secret: s, passphrase: p } });
+  setMode(isDemo);
+  modal.classList.remove('show');
+};
+
+// ── Clock ─────────────────────────────────────────────────────────────────────
+setInterval(() => {
+  const n = new Date();
+  document.getElementById('clk').textContent =
+    [n.getUTCHours(),n.getUTCMinutes(),n.getUTCSeconds()]
+    .map(x => String(x).padStart(2,'0')).join(':') + ' UTC';
+}, 1000);
+
+// ── Ticker ────────────────────────────────────────────────────────────────────
+function buildTicker() {
+  document.getElementById('ttrack').innerHTML =
+    [...MKT,...MKT].map(m => `
+      <div class="t-item">
+        <span class="t-sym">${m.sym}</span>
+        <span class="t-px">${fmtPx(m.px)}</span>
+        <span class="t-ch ${m.ch>=0?'up':'dn'}">${m.ch>=0?'▲':'▼'} ${Math.abs(m.ch).toFixed(2)}%</span>
+      </div>`).join('');
+}
+
+// ── Market list ───────────────────────────────────────────────────────────────
+function buildMkts(q='') {
+  document.getElementById('mlist').innerHTML =
+    MKT.map((m,i) => ({m,i}))
+       .filter(({m}) => !q || m.sym.toLowerCase().includes(q) || m.name.toLowerCase().includes(q))
+       .map(({m,i}) => `
+         <div class="m-row ${i===ai?'on':''}" data-i="${i}">
+           <span class="m-sym">${m.sym}</span>
+           <span class="m-px ${m.ch>=0?'up':'dn'}" id="mpx${i}">${fmtPx(m.px)}</span>
+           <span class="m-name">${m.name}</span>
+           <span class="m-chg ${m.ch>=0?'up':'dn'}">${m.ch>=0?'▲':'▼'} ${Math.abs(m.ch).toFixed(2)}%</span>
+         </div>`).join('');
+}
+
+document.getElementById('mlist').addEventListener('click', e => {
+  const r = e.target.closest('.m-row');
+  if (r) selMkt(+r.dataset.i);
+});
+document.getElementById('msearch').addEventListener('input', e => buildMkts(e.target.value.toLowerCase().trim()));
+
+// ── Select market ─────────────────────────────────────────────────────────────
+function selMkt(idx) {
+  const prev = MKT[ai]; ai = idx; const m = MKT[idx];
+  if (wsOk) {
+    wsSend({op:'unsubscribe',args:[{channel:`candle${tf}`,instId:prev.id}]});
+    wsSend({op:'subscribe',  args:[{channel:`candle${tf}`,instId:m.id}]});
+  }
+  buildMkts(); updateHead(m);
+  fetchCandles(m.id, tf);
+}
+
+function updateHead(m) {
+  const up = m.ch >= 0;
+  document.getElementById('isym').textContent  = m.sym;
+  document.getElementById('ipx').textContent   = fmtPx(m.px);
+  document.getElementById('ipx').className     = 'i-px '  + (up?'up':'dn');
+  document.getElementById('ichg').textContent  = `${up?'▲':'▼'} ${Math.abs(m.ch).toFixed(2)}%`;
+  document.getElementById('ichg').className    = 'i-chg ' + (up?'up':'dn');
+  document.getElementById('shigh').textContent = fmtPx(m.hi||m.px*1.01);
+  document.getElementById('slow').textContent  = fmtPx(m.lo||m.px*0.99);
+  document.getElementById('svol').textContent  = m.vol||'—';
+  document.getElementById('oprice').placeholder = fmtPx(m.px);
+}
+
+// ── Chart ─────────────────────────────────────────────────────────────────────
+let chart = null;
+let candleSeries = null;
+
+function initChart() {
+  const box = document.getElementById('cbox');
+  if (chart) { chart.remove(); }
+  chart = LightweightCharts.createChart(box, {
+    width: box.clientWidth,
+    height: box.clientHeight,
+    layout: {
+      background: { type: 'solid', color: 'transparent' },
+      textColor: '#8c8c8c',
+    },
+    grid: {
+      vertLines: { color: '#1f1f1f' },
+      horzLines: { color: '#1f1f1f' },
+    },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: '#1f1f1f' },
+    timeScale: {
+      borderColor: '#1f1f1f',
+      timeVisible: true,
+      secondsVisible: false,
+    },
+  });
+
+  candleSeries = chart.addCandlestickSeries({
+    upColor: '#00d26a',
+    downColor: '#f44336',
+    borderDownColor: '#f44336',
+    borderUpColor: '#00d26a',
+    wickDownColor: '#f44336',
+    wickUpColor: '#00d26a',
+  });
+}
+
+function updateChartData(data) {
+  if (candleSeries) candleSeries.setData(data);
+}
+
+function updateChartTick(tick) {
+  if (candleSeries) candleSeries.update(tick);
+}
+
+window.addEventListener('resize', () => {
+  if(chart) {
+    const box = document.getElementById('cbox');
+    chart.resize(box.clientWidth, box.clientHeight);
+  }
+});
+
+// ── Positions & Orders ────────────────────────────────────────────────────────
+function buildPos() {
+  document.getElementById('pcnt').textContent = POS.length;
+  if (!POS.length) {
+    document.getElementById('plist').innerHTML = '<div style="padding:14px;color:var(--text-3);font-size:11px;text-align:center;">No open positions</div>';
+    return;
+  }
+  document.getElementById('plist').innerHTML = POS.map(p => `
+    <div class="p-row" style="padding-bottom:10px;">
+      <div class="p-top"><span class="p-sym">${p.sym}</span><span class="p-val">$${p.val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+      <div class="p-bot"><span class="p-amt">${p.amt}</span><span class="p-pnl ${p.pnl>=0?'up':'dn'}">${p.pnl>=0?'▲':'▼'} ${Math.abs(p.pnl)}%</span></div>
+      <div class="p-bar"><div class="p-bar-f" style="width:${p.pct}%;background:${p.pnl>=0?'var(--green)':'var(--red)'}"></div></div>
+      <div style="display:flex;gap:4px;margin-top:6px;">
+        <button class="close-pos-btn" data-inst="${p.instId}" data-mgn="${p.mgnMode}" style="flex:1;background:#f44336;color:#fff;border:none;padding:4px;border-radius:2px;cursor:pointer;font-size:10px;">Close Mkt</button>
+        <button class="lev-pos-btn" data-inst="${p.instId}" data-mgn="${p.mgnMode}" style="flex:1;background:#333;color:#fff;border:none;padding:4px;border-radius:2px;cursor:pointer;font-size:10px;">Leverage</button>
+      </div>
+    </div>`).join('');
+    
+  document.querySelectorAll('.close-pos-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const inst = e.target.dataset.inst;
+      const mgn = e.target.dataset.mgn;
+      vscode.postMessage({ command: 'close_position', instId: inst, mgnMode: mgn });
+      showToast('Closing position...', 'warn');
+    });
+  });
+
+  document.querySelectorAll('.lev-pos-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const inst = e.target.dataset.inst;
+      const mgn = e.target.dataset.mgn;
+      const lev = prompt('Enter new leverage (e.g. 10):');
+      if(lev) {
+        vscode.postMessage({ command: 'set_leverage', instId: inst, mgnMode: mgn, lever: lev });
+        showToast('Setting leverage...', 'warn');
+      }
+    });
+  });
+}
+
+function buildOrd() {
+  document.getElementById('ocnt').textContent = ORD.length;
+  if (!ORD.length) {
+    document.getElementById('olist').innerHTML = '<div style="padding:14px;color:var(--text-3);font-size:11px;text-align:center;">No open orders</div>';
+    return;
+  }
+  document.getElementById('olist').innerHTML = ORD.map(o => `
+    <div class="or-row">
+      <span class="or-side ${o.side}">${o.side.toUpperCase()}</span>
+      <span class="or-sym">${o.sym}</span>
+      <span class="or-px">${o.px}</span>
+      <span class="or-st">${o.st}</span>
+    </div>`).join('');
+}
+
+function buildBots() {
+  document.getElementById('bcnt').textContent = BOTS.length;
+  if (!BOTS.length) {
+    document.getElementById('blist').innerHTML = '<div style="padding:14px;color:var(--text-3);font-size:11px;text-align:center;">No active bots</div>';
+    return;
+  }
+  document.getElementById('blist').innerHTML = BOTS.map(b => `
+    <div class="or-row" style="position:relative">
+      <span class="or-side buy">${b.type}</span>
+      <span class="or-sym">${b.sym}</span>
+      <span class="or-px ${parseFloat(b.pnl)>=0?'up':'dn'}">${parseFloat(b.pnl)>=0?'+':''}${b.pnl}</span>
+      <button class="stop-bot-btn" data-id="${b.id}" data-type="${b.type}" data-inst="${b.sym}" style="background:#f44336;color:#fff;border:none;padding:2px 6px;border-radius:2px;cursor:pointer;font-size:10px;">Stop</button>
+    </div>`).join('');
+    
+  document.querySelectorAll('.stop-bot-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.target.dataset.id;
+      const type = e.target.dataset.type;
+      const inst = e.target.dataset.inst;
+      vscode.postMessage({ command: 'stop_bot', algoId: id, algoOrdType: type, instId: inst });
+      showToast('Stopping bot...', 'warn');
+    });
+  });
+}
+
+// ── Order form ────────────────────────────────────────────────────────────────
+document.getElementById('tbuy').addEventListener('click',  () => setSide('buy'));
+document.getElementById('tsell').addEventListener('click', () => setSide('sell'));
+
+function setSide(s) {
+  bs = s;
+  document.getElementById('tbuy').classList.toggle('on',  s==='buy');
+  document.getElementById('tsell').classList.toggle('on', s==='sell');
+  const b = document.getElementById('sbtn');
+  b.textContent = s==='buy'?'Buy':'Sell';
+  b.className = 'sub-btn '+s;
+}
+
+document.getElementById('oprice').addEventListener('input', () => {
+  const p=+document.getElementById('oprice').value||0, a=+document.getElementById('oamt').value||0;
+  document.getElementById('ototl').value = p&&a ? (p*a).toFixed(2) : '';
+});
+document.getElementById('oamt').addEventListener('input', () => {
+  const p=+document.getElementById('oprice').value||0, a=+document.getElementById('oamt').value||0;
+  document.getElementById('ototl').value = p&&a ? (p*a).toFixed(2) : '';
+});
+
+document.getElementById('sbtn').addEventListener('click', () => {
+  const px  = document.getElementById('oprice').value;
+  const amt = document.getElementById('oamt').value;
+  const typ = document.getElementById('otype').value;
+  if (!amt) { showToast('Enter an amount','warn'); return; }
+  if (typ!=='Market' && !px) { showToast('Enter a price','warn'); return; }
+  if (!isDemo) {
+    const notional = (parseFloat(px||'0')||0) * (parseFloat(amt)||0);
+    if (notional > 500 || (parseFloat(amt)||0) > 1000) {
+      const ok = confirm('You are placing a LIVE order. Confirm to proceed.');
+      if (!ok) return;
+    }
+  }
+  const m = MKT[ai];
+  vscode.postMessage({
+    command: 'place_order',
+    side: bs,
+    type: typ.toLowerCase(),
+    sz: amt,
+    px: px || '',
+    instId: m.id
+  });
+  
+  showToast('Submitting order...', 'warn');
+});
+
+// Timeframe
+document.querySelectorAll('.tf').forEach(b => b.addEventListener('click', () => {
+  const m = MKT[ai];
+  if (wsOk) wsSend({op:'unsubscribe',args:[{channel:`candle${tf}`,instId:m.id}]});
+  document.querySelectorAll('.tf').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  tf = b.dataset.tf;
+  if (wsOk) wsSend({op:'subscribe',args:[{channel:`candle${tf}`,instId:m.id}]});
+  // removed hist update
+  fetchCandles(m.id, tf);
+}));
+
+// Nav
+let mType = 'SPOT';
+document.querySelectorAll('.n-btn').forEach(b => b.addEventListener('click', () => setView(b.dataset.v)));
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+function setWs(state) {
+  document.getElementById('wsd').className = 'ws-dot '+state;
+  document.getElementById('wsl').textContent = {live:'Live',connecting:'Connecting',error:'Error',reconnecting:'Reconnecting'}[state]||state;
+}
+
+function wsSend(obj) {
+  if (ws && ws.readyState===1) ws.send(JSON.stringify(obj));
+}
+
+let rtimer = null;
+
+function connectWS() {
+  if (ws) try{ws.close()}catch(e){}
+  setWs('connecting');
+  ws = new WebSocket('wss://ws.okx.com:8443/ws/v5/public');
+  lastWsMsg = Date.now();
+
+  ws.onopen = () => {
+    wsOk = true; setWs('live');
+    wsSend({op:'subscribe', args: MKT.map(m => ({channel:'tickers', instId:m.id}))});
+    wsSend({op:'subscribe', args:[{channel:`candle${tf}`, instId:MKT[ai].id}]});
+    if (wsDeadTimer) clearInterval(wsDeadTimer);
+    wsDeadTimer = setInterval(() => {
+      if (!ws) return;
+      if (Date.now() - lastWsMsg > 15000) {
+        setWs('reconnecting');
+        try { ws.close(); } catch(_) {}
+      }
+    }, 5000);
+  };
+
+  ws.onmessage = e => {
+    lastWsMsg = Date.now();
+    if (e.data==='pong') return;
+    try { const m=JSON.parse(e.data); if(m.data&&m.arg) onMsg(m); } catch(_){}
+  };
+
+  ws.onerror = () => setWs('error');
+  ws.onclose = () => {
+    wsOk=false; setWs('reconnecting');
+    if (wsDeadTimer) { clearInterval(wsDeadTimer); wsDeadTimer=null; }
+    if (wsPing) { clearInterval(wsPing); wsPing=null; }
+    clearTimeout(rtimer); rtimer=setTimeout(connectWS,3000);
+  };
+
+  if (wsPing) clearInterval(wsPing);
+  wsPing = setInterval(() => { if(ws&&ws.readyState===1) ws.send('ping'); }, 25000);
+}
+
+function onMsg(msg) {
+  const {channel, instId} = msg.arg;
+
+  if (channel==='tickers') {
+    const d   = msg.data[0];
+    const idx = MKT.findIndex(m => m.id===instId);
+    if (idx<0) return;
+    const m   = MKT[idx];
+    const nw  = parseFloat(d.last);
+    const old = m.px;
+    m.px = nw;
+    m.ch = parseFloat(d.open24h) ? parseFloat(((nw-parseFloat(d.open24h))/parseFloat(d.open24h)*100).toFixed(2)) : m.ch;
+    m.hi = parseFloat(d.high24h)||m.hi;
+    m.lo = parseFloat(d.low24h) ||m.lo;
+    m.vol= fmtVol(parseFloat(d.volCcy24h)||0);
+
+    const el = document.getElementById('mpx'+idx);
+    if (el) {
+      el.textContent = fmtPx(nw);
+      el.classList.remove('fu','fd'); void el.offsetWidth;
+      el.classList.add(nw>=old?'fu':'fd');
+    }
+    if (idx===ai) updateHead(m);
+  }
+
+  if (channel.startsWith('candle')) {
+    const idx = MKT.findIndex(m => m.id===instId);
+    if (idx<0) return;
+    const [ts, o, h, l, c] = msg.data[0];
+    const tick = {
+      time: parseInt(ts) / 1000,
+      open: parseFloat(o),
+      high: parseFloat(h),
+      low: parseFloat(l),
+      close: parseFloat(c)
+    };
+    if (idx===ai) updateChartTick(tick);
+  }
+}
+
+// ── REST seed ─────────────────────────────────────────────────────────────────
+async function seedTickers() {
+  try {
+    const r = await fetch('https://www.okx.com/api/v5/market/tickers?instType=SPOT');
+    const j = await r.json();
+    if (!j.data) return;
+    j.data.forEach(d => {
+      const idx = MKT.findIndex(m => m.id===d.instId);
+      if (idx<0) return;
+      const m=MKT[idx];
+      m.px  = parseFloat(d.last);
+      m.ch  = parseFloat(((parseFloat(d.last)-parseFloat(d.open24h))/parseFloat(d.open24h)*100).toFixed(2));
+      m.hi  = parseFloat(d.high24h);
+      m.lo  = parseFloat(d.low24h);
+      m.vol = fmtVol(parseFloat(d.volCcy24h));
+    });
+    buildMkts(); buildTicker(); updateHead(MKT[ai]);
+  } catch(_) {}
+}
+
+async function fetchCandles(id, bar) {
+  try {
+    const r = await fetch(`https://www.okx.com/api/v5/market/candles?instId=${id}&bar=${bar}&limit=100`);
+    const j = await r.json();
+    if (!j.data) return;
+    const cData = j.data.reverse().map(d => ({
+      time: parseInt(d[0]) / 1000,
+      open: parseFloat(d[1]),
+      high: parseFloat(d[2]),
+      low: parseFloat(d[3]),
+      close: parseFloat(d[4])
+    }));
+    if (MKT[ai].id===id) updateChartData(cData);
+  } catch(_) {}
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+document.getElementById('ptot').textContent = '---';
+document.getElementById('ptot').nextElementSibling.textContent = '';
+document.getElementById('pday').style.display = 'none';
+document.getElementById('alloc').innerHTML = '';
+
+buildTicker();
+buildMkts();
+buildPos();
+buildOrd();
+updateHead(MKT[0]);
+initChart();
+
+// Trigger auth check
+vscode.postMessage({ command: 'check_auth' });
+
+seedTickers().then(() => {
+  fetchCandles(MKT[ai].id, tf);
+  connectWS();
+});
+</script>
+</body>
+</html>

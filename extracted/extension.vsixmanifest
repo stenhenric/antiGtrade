@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
+  <Metadata>
+    <Identity Language="en-US" Id="antigtrade" Version="1.1.0" Publisher="antigtrade" />
+    <DisplayName>AntiGTrade</DisplayName>
+    <Description xml:space="preserve">Live OKX trading dashboard inside Antigravity IDE</Description>
+    <Tags>trading,crypto,okx,dashboard</Tags>
+    <Categories>Other</Categories>
+    <GalleryFlags>Public</GalleryFlags>
+    <Icon>extension/icon.png</Icon>
+  </Metadata>
+  <Installation>
+    <InstallationTarget Id="Microsoft.VisualStudio.Code" Version="[1.80.0,)" />
+  </Installation>
+  <Dependencies />
+  <Assets>
+    <Asset Type="Microsoft.VisualStudio.Code.Manifest" Path="extension/package.json" Addressable="true" />
+    <Asset Type="Microsoft.VisualStudio.Services.Content.Details" Path="extension/package.json" Addressable="true" />
+  </Assets>
+</PackageManifest>
